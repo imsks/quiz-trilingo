@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const Auth = require("../../models/user/user");
+const User = require("../../models/user/user");
 const Error = require("../../utils/errors");
 
 // FOR TESTING ONLY
@@ -11,13 +11,13 @@ exports.test = (req, res) => {
   });
 };
 
-// Auth Sign In Route
+// User Sign In Route
 exports.signIn = async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await Auth.findOne({ email });
+  const user = await User.findOne({ email });
 
-  let payload = { email, password };
+  let payload = { email };
 
   if (user) {
     bcrypt.compare(password, user.hashedPassword, function (err, result) {
@@ -50,23 +50,32 @@ exports.signIn = async (req, res) => {
   }
 };
 
-// Auth Sign In Route
+// User Sign In Route
 exports.signUp = async (req, res) => {
-  const { email, password, isBanker } = req.body;
+  const { name, email, password } = req.body;
 
   // 1. Search if the contact already exists
-  const isAlreadyRegistered = await Auth.findOne({ email });
+  const isAlreadyRegistered = await User.findOne({ email });
   // 2. If not exists
   if (!isAlreadyRegistered) {
     bcrypt.hash(password, 10, function (err, hash) {
-      // Store hash in your password DB.
-      const newAuth = Auth({
-        email,
-        hashedPassword: hash,
-        isBanker,
+      let payload = { email };
+      let accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
+        algorithm: "HS256",
+        expiresIn: "10m",
       });
 
-      newAuth
+      // console.log(accessToken);
+
+      // Store hash in your password DB.
+      const newUser = User({
+        name,
+        email,
+        hashedPassword: hash,
+        token: accessToken,
+      });
+
+      newUser
         .save()
         .then((data) =>
           res.status(200).json({
