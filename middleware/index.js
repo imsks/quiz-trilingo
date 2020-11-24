@@ -3,7 +3,6 @@ const Error = require("../utils/errors");
 
 exports.verify = function (req, res, next) {
   let accessToken = req.headers.jwt;
-  // console.log(accessToken);
   //if there is no token stored in cookies, the request is unauthorized
   if (!accessToken) {
     return res.status(400).json({
@@ -23,7 +22,7 @@ exports.verify = function (req, res, next) {
     //if an error occured return request unauthorized error
     return res.status(400).json({
       success: "Fail",
-      message: Error.errorMessages.noAuth,
+      message: Error.errorMessages.needToSignIn,
     });
   }
 };

@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 
 const userAuth = require("./routes/users/auth");
+const adminAuth = require("./routes/admins/auth");
 
 const app = express();
 
@@ -14,5 +15,8 @@ app.use(cookieParser());
 
 // For Users
 app.use("/api/user/auth", userAuth);
+
+// For Admin
+app.use("/api/admin/auth", adminAuth);
 
 module.exports = app;

@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const User = require("../../models/user/user");
+const Admin = require("../../models/admin/admins");
 const Error = require("../../utils/errors");
 
 // FOR TESTING ONLY
@@ -11,16 +11,16 @@ exports.test = (req, res) => {
   });
 };
 
-// User Sign In Route
+// Admin Sign In Route
 exports.signIn = async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-
+  const admin = await Admin.findOne({ email });
+  
   let payload = { email };
 
-  if (user) {
-    bcrypt.compare(password, user.hashedPassword, function (err, result) {
+  if (admin) {
+    bcrypt.compare(password, admin.hashedPassword, function (err, result) {
       // console.log(process.env.ACCESS_TOKEN_LIFE);
       if (result) {
         //create the access token with the shorter lifespan
@@ -32,7 +32,8 @@ exports.signIn = async (req, res) => {
         res.cookie("token", accessToken, { httpOnly: true }).status(200).json({
           success: "Success",
           message: "Sign in successful.",
-          data: user,
+          data: admin,
+          accessToken,
         });
       } else {
         res.status(400).json({
@@ -49,12 +50,12 @@ exports.signIn = async (req, res) => {
   }
 };
 
-// User Sign In Route
+// Admin Sign In Route
 exports.signUp = async (req, res) => {
   const { name, email, password } = req.body;
 
   // 1. Search if the contact already exists
-  const isAlreadyRegistered = await User.findOne({ email });
+  const isAlreadyRegistered = await Admin.findOne({ email });
   // 2. If not exists
   if (!isAlreadyRegistered) {
     bcrypt.hash(password, 10, function (err, hash) {
@@ -73,7 +74,7 @@ exports.signUp = async (req, res) => {
       });
 
       // Store hash in your password DB.
-      const newUser = User({
+      const newAdmin = Admin({
         name,
         email,
         hashedPassword: hash,
@@ -81,7 +82,7 @@ exports.signUp = async (req, res) => {
         refreshToken,
       });
 
-      newUser
+      newAdmin
         .save()
         .then((data) =>
           res.status(200).json({
@@ -95,7 +96,7 @@ exports.signUp = async (req, res) => {
   } else {
     res.status(400).json({
       status: "Fail",
-      message: Error.errorMessages.userAlreadyExists,
+      message: Error.errorMessages.AdminAlreadyExists,
     });
   }
 };
