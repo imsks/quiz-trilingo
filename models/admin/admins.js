@@ -11,6 +11,14 @@ const AdminSchema = new Schema({
     type: String,
     unique: [true, "Your email alredy exists. Try logging in."],
   },
+  role: {
+    type: String,
+    required: [true, "Please provide the role"],
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
   hashedPassword: {
     type: String,
     required: [true, "Please provide the name"],

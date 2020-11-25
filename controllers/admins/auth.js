@@ -16,7 +16,7 @@ exports.signIn = async (req, res) => {
   const { email, password } = req.body;
 
   const admin = await Admin.findOne({ email });
-  
+
   let payload = { email };
 
   if (admin) {
@@ -52,7 +52,7 @@ exports.signIn = async (req, res) => {
 
 // Admin Sign In Route
 exports.signUp = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
 
   // 1. Search if the contact already exists
   const isAlreadyRegistered = await Admin.findOne({ email });
@@ -77,6 +77,8 @@ exports.signUp = async (req, res) => {
       const newAdmin = Admin({
         name,
         email,
+        role,
+        isVerified: false,
         hashedPassword: hash,
         token: accessToken,
         refreshToken,
