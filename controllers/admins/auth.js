@@ -15,25 +15,37 @@ exports.test = (req, res) => {
 exports.signIn = async (req, res) => {
   const { email, password } = req.body;
 
-  const admin = await Admin.findOne({ email });
+  const user = await Admin.findOne({ email });
 
   let payload = { email };
 
-  if (admin) {
-    bcrypt.compare(password, admin.hashedPassword, function (err, result) {
-      // console.log(process.env.ACCESS_TOKEN_LIFE);
+  if (user) {
+    bcrypt.compare(password, user.hashedPassword, function (err, result) {
       if (result) {
-        //create the access token with the shorter lifespan
+        console.log(process.env.ACCESS_TOKEN_LIFE);
+        // Generate Access Token
         let accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
           algorithm: "HS256",
-          expiresIn: "10m",
+          expiresIn: process.env.ACCESS_TOKEN_LIFE,
         });
 
-        res.cookie("token", accessToken, { httpOnly: true }).status(200).json({
-          success: "Success",
-          message: "Sign in successful.",
-          data: admin,
-          accessToken,
+        // Generate Refresh Token
+        let refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
+          algorithm: "HS256",
+          expiresIn: process.env.REFRESH_TOKEN_LIFE,
+        });
+
+        user.updateOne({ token: accessToken, refreshToken }).then((data) => {
+          res
+            .cookie("token", accessToken, { httpOnly: true })
+            .status(200)
+            .json({
+              success: "Success",
+              message: "Sign in successful.",
+              data,
+              accessToken,
+              refreshToken,
+            });
         });
       } else {
         res.status(400).json({
@@ -61,30 +73,29 @@ exports.signUp = async (req, res) => {
     bcrypt.hash(password, 10, function (err, hash) {
       let payload = { email };
 
-      // Access Token
+      // Generate Access Token
       let accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
         algorithm: "HS256",
-        expiresIn: "10m",
+        expiresIn: process.env.ACCESS_TOKEN_LIFE,
       });
 
-      // Refresh Token
+      // Generate Refresh Token
       let refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
         algorithm: "HS256",
         expiresIn: process.env.REFRESH_TOKEN_LIFE,
       });
 
       // Store hash in your password DB.
-      const newAdmin = Admin({
+      const newUser = Admin({
         name,
         email,
         role,
-        isVerified: false,
         hashedPassword: hash,
         token: accessToken,
         refreshToken,
       });
 
-      newAdmin
+      newUser
         .save()
         .then((data) =>
           res.status(200).json({
@@ -98,7 +109,68 @@ exports.signUp = async (req, res) => {
   } else {
     res.status(400).json({
       status: "Fail",
-      message: Error.errorMessages.AdminAlreadyExists,
+      message: Error.errorMessages.userAlreadyExists,
     });
   }
+};
+
+// Refresh Token
+exports.refreshToken = async (req, res, next) => {
+  const refreshToken = req.headers.refreshtoken;
+  const accessToken = req.headers.accesstoken;
+  // console.log(accessToken)
+
+  // Check if Access Token is provided
+  if (!accessToken) {
+    return res.status(400).json({
+      success: "Fail",
+      message: Error.errorMessages.noAuth,
+    });
+  }
+
+  // Get the user
+  const user = await Admin.findOne({ refreshToken });
+  // console.log(user);
+
+  let payload;
+
+  // Verify Access Token
+  try {
+    payload = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+  } catch (e) {
+    return res.status(400).json({
+      success: "Fail",
+      message: Error.errorMessages.needToSignIn,
+    });
+  }
+
+  // Verify Refresh Token
+  try {
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+  } catch (e) {
+    return res.status(400).json({
+      success: "Fail",
+      message: Error.errorMessages.needToSignIn,
+    });
+  }
+
+  // Assign new Access Token
+  let newToken = jwt.sign(
+    { email: payload.email },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      algorithm: "HS256",
+      expiresIn: process.env.ACCESS_TOKEN_LIFE,
+    }
+  );
+
+  user.updateOne({ token: newToken }).then((data) => {
+    res.cookie("token", newToken, { httpOnly: true }).status(200).json({
+      success: "Success",
+      message: "Sign in successful.",
+      data,
+      newToken,
+      refreshToken,
+    });
+  });
 };
